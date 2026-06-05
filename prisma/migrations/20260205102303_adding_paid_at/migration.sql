@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "order_items" ADD COLUMN     "paid_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

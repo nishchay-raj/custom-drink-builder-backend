@@ -1,0 +1,162 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model base_drinks {
+  id           String  @id @default(uuid())
+  name         String  @unique
+  description  String?
+  price        Int
+  is_available Boolean @default(true)
+
+  flavors     base_drink_flavors[]
+  order_items order_items[]
+}
+
+model flavors {
+  id           String  @id @default(uuid())
+  name         String  @unique
+  description  String?
+  price        Int
+  is_available Boolean @default(true)
+
+  base_drinks      base_drink_flavors[]
+  orderItemOptions order_item_options[]
+}
+
+model base_drink_flavors {
+  base_drink_id String
+  flavor_id     String
+
+  base_drink base_drinks @relation(fields: [base_drink_id], references: [id])
+  flavor     flavors     @relation(fields: [flavor_id], references: [id])
+
+  @@id([base_drink_id, flavor_id])
+  @@index([base_drink_id])
+  @@index([flavor_id])
+}
+
+model addons {
+  id           String  @id @default(uuid())
+  name         String  @unique
+  description  String?
+  price        Int
+  is_available Boolean @default(true)
+
+  order_items order_items[]
+}
+
+model payments {
+  id       String @id @default(uuid())
+  order_id String
+
+  amount Int
+  status String // PENDING | SUCCESS | FAILED
+
+  method String // CASH | ONLINE
+
+  transaction_id String? @unique // your intern al txn id
+
+  razorpay_order_id   String? @unique
+  razorpay_payment_id String?
+  razorpay_signature  String?
+
+  raw_response Json? // full gateway response
+
+  created_at DateTime @default(now())
+
+  order orders @relation(fields: [order_id], references: [id])
+
+  @@index([order_id])
+}
+
+model orders {
+  id                 String   @id @default(uuid())
+  payment_method     String //CASH | ONLINE
+  payment_successful Boolean  @default(false)
+  status             String   @default("PENDING")
+  table_number       Int?
+  total_amount       Int
+  name               String
+  remarks            String?
+  created_at         DateTime @default(now())
+
+  order_items order_items[]
+
+  payments payments[]
+}
+
+model order_items {
+  id            String @id @default(uuid())
+  order_id      String
+  base_drink_id String?
+  addon_id      String?
+
+  quantity Int
+
+  base_price   Int
+  total_amount Int
+
+  created_at DateTime @default(now())
+
+  order      orders       @relation(fields: [order_id], references: [id])
+  base_drink base_drinks? @relation(fields: [base_drink_id], references: [id])
+  addon      addons?      @relation(fields: [addon_id], references: [id])
+
+  options order_item_options[]
+
+  @@index([order_id])
+  @@index([base_drink_id])
+  @@index([addon_id])
+}
+
+model order_item_options {
+  id            String @id @default(uuid())
+  order_item_id String
+  flavor_id     String
+
+  price Int
+
+  order_item order_items @relation(fields: [order_item_id], references: [id])
+  flavor     flavors     @relation(fields: [flavor_id], references: [id])
+
+  @@unique([order_item_id, flavor_id])
+
+  @@index([order_item_id])
+  @@index([flavor_id])
+}
+
+model tables {
+  id           String   @id @default(uuid())
+  table_number Int      @unique
+  is_occupied  Boolean  @default(false)
+  is_available Boolean  @default(true)
+  created_at   DateTime @default(now())
+}
+
+enum Role{
+  MANAGER
+  KITCHEN
+  WAITER
+}
+
+model logins {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password_hash String
+  role          Role
+  created_at    DateTime @default(now())
+}
+
+model feedback {
+  id         String   @id @default(uuid())
+  name       String
+  number     Int
+  feedback   String
+  created_at DateTime @default(now())
+}

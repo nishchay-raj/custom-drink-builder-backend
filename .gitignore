@@ -1,0 +1,17 @@
+node_modules/
+.vscode
+package-lock.json
+.cache/
+public/static
+*.marko.js
+.env.example
+.logs/*.log
+dist/
+.env
+.github\workflows
+certs/
+# /src/generated/prisma
+# 
+# /src/generated/prisma
+
+# /src/generated/prisma
