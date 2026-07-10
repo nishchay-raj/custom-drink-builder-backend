@@ -24,18 +24,17 @@ https://github.com/nishchay-raj/custom-drink-builder-frontend
 
 ## API Flow
 
-Client
-↓
+Client->
 Express Routes
-↓
+->
 Middleware
-↓
+->
 Controllers
-↓
+->
 Services
-↓
+->
 Prisma ORM
-↓
+->
 PostgreSQL
 
 ## Getting Started
