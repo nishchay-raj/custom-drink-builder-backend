@@ -40,6 +40,6 @@ PostgreSQL
 ## Getting Started
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
