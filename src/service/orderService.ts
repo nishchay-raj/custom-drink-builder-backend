@@ -24,10 +24,14 @@ export const createOnlineOrder = async (data: createOnlineOrderType) => {
             }
         }
 
-        const baseDrinkIds = [...new Set(data.items.map(i => i.baseDrinkId))];
+        const drinkItems = data.items.filter(i => i.baseDrinkId);
+        const addonItems = data.items.filter(i => i.addonId);
+
+        const baseDrinkIds = [...new Set(drinkItems.map(i => i.baseDrinkId!))];
         const flavorIds = [
-            ...new Set(data.items.flatMap(i => i.flavorIds ?? []))
+            ...new Set(drinkItems.flatMap(i => i.flavorIds ?? []))
         ];
+        const addonIds = [...new Set(addonItems.map(i => i.addonId!))];
 
         const baseDrinks = await tx.base_drinks.findMany({
             where: { id: { in: baseDrinkIds } }
@@ -35,6 +39,10 @@ export const createOnlineOrder = async (data: createOnlineOrderType) => {
 
         const flavors = await tx.flavors.findMany({
             where: { id: { in: flavorIds }, is_available: true }
+        });
+
+        const addons = await tx.addons.findMany({
+            where: { id: { in: addonIds }, is_available: true }
         });
 
         const validLinks = await tx.base_drink_flavors.findMany({
@@ -46,14 +54,15 @@ export const createOnlineOrder = async (data: createOnlineOrderType) => {
 
         const baseDrinkMap = new Map(baseDrinks.map(b => [b.id, b]));
         const flavorMap = new Map(flavors.map(f => [f.id, f]));
+        const addonMap = new Map(addons.map(a => [a.id, a]));
         const linkSet = new Set(
             validLinks.map(l => `${l.base_drink_id}-${l.flavor_id}`)
         );
 
         let total = 0;
 
-        for (const item of data.items) {
-            const baseDrink = baseDrinkMap.get(item.baseDrinkId);
+        for (const item of drinkItems) {
+            const baseDrink = baseDrinkMap.get(item.baseDrinkId!);
 
             if (!baseDrink || !baseDrink.is_available) {
                 throw new Error("Invalid or unavailable Base Drink");
@@ -80,6 +89,16 @@ export const createOnlineOrder = async (data: createOnlineOrderType) => {
             total += (baseDrink.price + flavorTotal) * item.quantity;
         }
 
+        for (const item of addonItems) {
+            const addonRecord = addonMap.get(item.addonId!);
+
+            if (!addonRecord) {
+                throw new Error("Invalid or unavailable addon");
+            }
+
+            total += addonRecord.price * item.quantity;
+        }
+
         const order = await tx.orders.create({
             data: {
                 payment_method: data.payment_method,
@@ -90,8 +109,8 @@ export const createOnlineOrder = async (data: createOnlineOrderType) => {
             }
         });
 
-        for (const item of data.items) {
-            const baseDrink = baseDrinkMap.get(item.baseDrinkId)!;
+        for (const item of drinkItems) {
+            const baseDrink = baseDrinkMap.get(item.baseDrinkId!)!;
 
             let flavorTotal = 0;
             const selectedFlavors = [];
@@ -128,6 +147,20 @@ export const createOnlineOrder = async (data: createOnlineOrderType) => {
             }
         }
 
+        for (const item of addonItems) {
+            const addonRecord = addonMap.get(item.addonId!)!;
+
+            await tx.order_items.create({
+                data: {
+                    order_id: order.id,
+                    addon_id: item.addonId,
+                    quantity: item.quantity,
+                    base_price: addonRecord.price,
+                    total_amount: addonRecord.price * item.quantity,
+                }
+            });
+        }
+
         if (data.table_number) {
             await tx.tables.update({
                 where: {
@@ -154,6 +187,7 @@ export const getOrderItems = async (orderId: string) => {
         where: { order_id: orderId },
         include: {
             base_drink: true,
+            addon: true,
             options: {
                 include: {
                     flavor: true,
@@ -165,6 +199,7 @@ export const getOrderItems = async (orderId: string) => {
     return items.map(item => ({
         id: item.id,
         baseDrink: item.base_drink?.name,
+        addon: item.addon?.name,
         basePrice: item.base_price,
         quantity: item.quantity,
         totalAmount: item.total_amount,

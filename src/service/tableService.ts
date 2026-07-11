@@ -15,6 +15,7 @@ export const getTablesForUsers = async () => {
     return await prisma.tables.findMany({
         where: {
             is_available: true,
+            is_occupied: false
         },
         orderBy: {table_number: "asc"}
     });

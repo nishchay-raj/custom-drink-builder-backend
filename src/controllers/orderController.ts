@@ -25,7 +25,7 @@ export const createOnlineOrderController = async (req: Request, res: Response) =
     } catch (err) {
 
         return res.status(400).json({
-            error: err,
+            error: err instanceof Error ? err.message : err,
             message: "Could not create the order",
         })
 
@@ -47,8 +47,8 @@ export const getAllOrdersController = async (req: Request, res: Response) => {
 
 export const getOrderItemsController = async (req: Request, res: Response) => {
     try {
-        const { orderid } = req.params;
-        const items = await orderService.getOrderItems(orderid as string);
+        const { orderId } = req.params;
+        const items = await orderService.getOrderItems(orderId as string);
         return res.status(200).json(items);
     } catch (err) {
         return res.status(500).json({
